@@ -13,14 +13,17 @@ class Cache<Key: Hashable, Value> {
     //MARK: -Private
 
     private var store: [Key : Value] = [:]
+    private let queue = DispatchQueue(label: "Cachce Queue")
 
     //MARK: -Public
 
     func cahce(_ value: Value, for key: Key) {
-        store[key] = value
+        queue.async {
+            self.store[key] = value
+        }
     }
 
     func value(for key: Key) -> Value? {
-        return store[key]
+        queue.sync {store[key]}
     }
 }

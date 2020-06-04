@@ -75,7 +75,6 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
         if let cachedData = cachedData,
             let image = UIImage(data: cachedData) {
             DispatchQueue.main.async {
-                guard self.collectionView.indexPath(for: cell) == indexPath else { return }
                 cell.imageView.image = image
             }
             return
