@@ -9,7 +9,11 @@
 import UIKit
 
 class PhotosCollectionViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
-    
+    //MARK: -Outlets
+    @IBOutlet var collectionView: UICollectionView!
+
+
+    //MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -22,7 +26,7 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
             self.roverInfo = rover
         }
     }
-    
+
     // UICollectionViewDataSource/Delegate
     
     func numberOfSections(in collectionView: UICollectionView) -> Int {
@@ -64,9 +68,28 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
     
     private func loadImage(forCell cell: ImageCollectionViewCell, forItemAt indexPath: IndexPath) {
         
-        // let photoReference = photoReferences[indexPath.item]
-        
-        // TODO: Implement image loading here
+         let photoReference = photoReferences[indexPath.item]
+        guard let imageURL = photoReference.imageURL.usingHTTPS else { return }
+
+        URLSession.shared.dataTask(with: imageURL) { data, response, error in
+            if let error = error {
+                NSLog("Error loading images: \(error)")
+                return
+            }
+
+            if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
+                print("Invalid response code! \(response.statusCode)")
+                return
+            }
+
+            guard let data = data,
+                let image = UIImage(data: data) else { return }
+
+            DispatchQueue.main.async {
+                guard self.collectionView.indexPath(for: cell) == indexPath else { return }
+                cell.imageView.image = image
+            }
+        }.resume()
     }
     
     // Properties
@@ -95,5 +118,5 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
         }
     }
     
-    @IBOutlet var collectionView: UICollectionView!
+
 }
