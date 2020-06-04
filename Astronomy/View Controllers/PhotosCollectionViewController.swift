@@ -22,11 +22,10 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
                 NSLog("Error fetching info for curiosity: \(error)")
                 return
             }
-            
             self.roverInfo = rover
         }
     }
-
+    
     // UICollectionViewDataSource/Delegate
     
     func numberOfSections(in collectionView: UICollectionView) -> Int {
@@ -63,6 +62,12 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
         return UIEdgeInsets(top: 0, left: 10.0, bottom: 0, right: 10.0)
     }
+
+    func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        let photoRef = photoReferences[indexPath.item]
+        fetchOperations[photoRef.id]?.cancel()
+        fetchOperations.removeValue(forKey: photoRef.id)
+    }
     
     // MARK: - Private
     
@@ -93,12 +98,12 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
         let cellUpdate = BlockOperation {
             guard let imageData = fetchOperation.imageData,
                 let image = UIImage(data: imageData),
-                self.collectionView.indexPath(for: cell) == indexPath else { return }
-                cell.imageView.image = image
+                cell.photoReferenceID == photoReference.id else { return }
+            cell.imageView.image = image
         }
 
         cellUpdate.addDependency(fetchOperation)
-         photoFetchQueue.addOperations([fetchOperation, cacheOperation], waitUntilFinished: false)
+        photoFetchQueue.addOperations([fetchOperation, cacheOperation], waitUntilFinished: false)
         OperationQueue.main.addOperation(cellUpdate)
     }
 
@@ -135,6 +140,8 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
         pfq.name = "Photo Fetch Queue"
         return pfq
     }()
+
+    private var fetchOperations: [Int : FetchPhotoOperation] = [:]
 
 
 }
