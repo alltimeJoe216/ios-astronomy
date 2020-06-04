@@ -81,27 +81,25 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
         }
 
         //Grabbing image data with URLSession
-        guard let imageURL = photoReference.imageURL.usingHTTPS else { return }
 
-        URLSession.shared.dataTask(with: imageURL) { data, response, error in
-            if let error = error {
-                NSLog("Error loading images: \(error)")
-                return
-            }
+        let fetchOperation = FetchPhotoOperation(photoReference: photoReference)
+        let cacheOperation = BlockOperation {
+            guard let imageData = fetchOperation.imageData else { return }
+            self.cache.cahce(imageData, for: photoReference.id)
+        }
 
-            if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
-                print("Invalid response code! \(response.statusCode)")
-                return
-            }
+        cacheOperation.addDependency(fetchOperation)
 
-            guard let data = data,
-                let image = UIImage(data: data) else { return }
-
-            DispatchQueue.main.async {
-                guard self.collectionView.indexPath(for: cell) == indexPath else { return }
+        let cellUpdate = BlockOperation {
+            guard let imageData = fetchOperation.imageData,
+                let image = UIImage(data: imageData),
+                self.collectionView.indexPath(for: cell) == indexPath else { return }
                 cell.imageView.image = image
-            }
-        }.resume()
+        }
+
+        cellUpdate.addDependency(fetchOperation)
+         photoFetchQueue.addOperations([fetchOperation, cacheOperation], waitUntilFinished: false)
+        OperationQueue.main.addOperation(cellUpdate)
     }
 
     private var cache = Cache<Int, Data>()
@@ -131,6 +129,12 @@ class PhotosCollectionViewController: UIViewController, UICollectionViewDataSour
             DispatchQueue.main.async { self.collectionView?.reloadData() }
         }
     }
-    
+
+    private let photoFetchQueue: OperationQueue = {
+        let pfq = OperationQueue()
+        pfq.name = "Photo Fetch Queue"
+        return pfq
+    }()
+
 
 }
